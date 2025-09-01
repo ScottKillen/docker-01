@@ -62,8 +62,6 @@ include:
   - syncthing.yml
   - wikijs.yml
   - memos.yml
-  - immich.yml
-  - jellyfin.yml
 
 networks:
   infrastructure_traefik:
