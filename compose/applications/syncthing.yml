@@ -1,0 +1,24 @@
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    restart: unless-stopped
+    networks:
+      - infrastructure_traefik
+    ports:
+      - "8384:8384"    # Web UI
+      - "22000:22000"  # Sync protocol
+      - "21027:21027/udp"  # Discovery
+    volumes:
+      - /opt/docker/data/syncthing:/var/syncthing
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.syncthing.rule: "Host(`sync.home.lab`)"
+      traefik.http.services.syncthing.loadbalancer.server.port: "8384"
+
+networks:
+  infrastructure_traefik:
+    external: true

@@ -1,0 +1,38 @@
+services:
+  wikijs:
+    image: ghcr.io/requarks/wiki:2
+    container_name: wikijs
+    restart: unless-stopped
+    networks:
+      - infrastructure_traefik
+      - infrastructure_database
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=wikijs
+      - DB_PASS=wikijs_secure_password_2025
+      - DB_NAME=wikijs
+    ports:
+      - "6875:3000"
+    volumes:
+      - /opt/docker/data/wikijs:/wiki/data/content
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wikijs.rule=Host(`docs.home.lab`)"
+      - "traefik.http.services.wikijs.loadbalancer.server.port=3000"
+      - "traefik.docker.network=infrastructure_traefik"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  infrastructure_traefik:
+    external: true
+  infrastructure_database:
+    external: true

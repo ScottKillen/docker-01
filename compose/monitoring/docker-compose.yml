@@ -1,0 +1,63 @@
+version: '3.8'
+
+networks:
+  monitoring:
+    external: true
+  traefik:
+    external: true
+    name: infrastructure_traefik
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    user: "1000:1000"
+    volumes:
+      - ../../config/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+      - traefik
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.home.lab`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_admin_password
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SERVER_DOMAIN=grafana.home.lab
+      - GF_SERVER_ROOT_URL=http://grafana.home.lab
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../../config/grafana:/etc/grafana/provisioning:ro
+    networks:
+      - monitoring
+      - traefik
+    secrets:
+      - grafana_admin_password
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.home.lab`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+secrets:
+  grafana_admin_password:
+    file: ../../secrets/grafana_admin_password.txt

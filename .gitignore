@@ -1,0 +1,8 @@
+backups/
+backups.backups/
+data/
+data.backup/
+data.backup.2/
+data-local/
+secrets/
+

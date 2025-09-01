@@ -1,0 +1,82 @@
+# /opt/docker/compose/infrastructure/docker-compose.yml
+# version: '3.8'
+
+networks:
+  traefik:
+    external: false
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  database:
+    external: false
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"    # Bind to docker-01 IP
+      - "0.0.0.0:443:443"  # Bind to docker-01 IP
+      - "0.0.0.0:8080:8080"    # Dashboard - localhost only
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../config/traefik:/etc/traefik:ro
+      - ../../data/traefik:/data
+    networks:
+      traefik:
+        ipv4_address: 172.20.0.10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.home.lab`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=admin:$2y$10$8BFZjJqrr5l1hEDAjXV5vOZfHd.AX4dEGBKgUPhvVftG8y1aDy9YW"  # admin:homelab
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: homelab
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../config/postgres:/docker-entrypoint-initdb.d:ro
+    networks:
+      database:
+        ipv4_address: 172.21.0.10
+    secrets:
+      - postgres_user
+      - postgres_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    command: sh -c 'redis-server --requirepass "$$(cat $$REDIS_PASSWORD_FILE)"'
+    volumes:
+      - redis_data:/data
+    networks:
+      database:
+        ipv4_address: 172.21.0.11
+    secrets:
+      - redis_password
+
+secrets:
+  postgres_user:
+    file: ../../secrets/postgres_user.txt
+  postgres_password:
+    file: ../../secrets/postgres_password.txt
+  redis_password:
+    file: ../../secrets/redis_password.txt

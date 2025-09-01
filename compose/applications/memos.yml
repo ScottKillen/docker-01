@@ -1,0 +1,30 @@
+services:
+  memos:
+    image: neosmemo/memos:latest
+    container_name: memos
+    restart: unless-stopped
+    networks:
+      - infrastructure_traefik
+      - infrastructure_database
+    environment:
+      - MEMOS_DRIVER=postgres
+      - MEMOS_DSN=postgresql://memos:memos_secure_password_2025@postgres:5432/memos?sslmode=disable
+      - MEMOS_PORT=5230
+    ports:
+      - "5230:5230"
+    volumes:
+      - /opt/docker/data/memos:/var/opt/memos
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=infrastructure_traefik"
+      - "traefik.http.routers.memos.rule=Host(`notes.home.lab`)"
+      - "traefik.http.routers.memos.service=memos"
+      - "traefik.http.services.memos.loadbalancer.server.port=5230"
+
+networks:
+  infrastructure_traefik:
+    external: true
+  infrastructure_database:
+    external: true
